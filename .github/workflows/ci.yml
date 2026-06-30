@@ -1,0 +1,85 @@
+name: Build & Deploy Azure MCP Agent
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  ACR_LOGIN_SERVER: addsmcpagentacr2026.azurecr.io
+  AKS_CLUSTER_NAME: adds-mcp-agent-aks
+  AKS_RESOURCE_GROUP: adds-azure-mcp-agent-rg
+
+jobs:
+  # ─── Build & Push Docker Images ────────────────────────────────────
+  build:
+    name: Build Container Images
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Login to ACR
+      uses: azure/docker-login@v1
+      with:
+        login-server: ${{ env.ACR_LOGIN_SERVER }}
+        username: ${{ secrets.ACR_USERNAME }}
+        password: ${{ secrets.ACR_PASSWORD }}
+
+    - name: Build & Push Python Agent image
+      run: |
+        docker build -t ${{ env.ACR_LOGIN_SERVER }}/python-agent:${{ github.sha }} \
+                      -t ${{ env.ACR_LOGIN_SERVER }}/python-agent:latest \
+                      ./agents
+        docker push ${{ env.ACR_LOGIN_SERVER }}/python-agent:${{ github.sha }}
+        docker push ${{ env.ACR_LOGIN_SERVER }}/python-agent:latest
+
+    - name: Build & Push MCP Server image
+      run: |
+        docker build -t ${{ env.ACR_LOGIN_SERVER }}/mcp-server:${{ github.sha }} \
+                      -t ${{ env.ACR_LOGIN_SERVER }}/mcp-server:latest \
+                      ./mcp-servers
+        docker push ${{ env.ACR_LOGIN_SERVER }}/mcp-server:${{ github.sha }}
+        docker push ${{ env.ACR_LOGIN_SERVER }}/mcp-server:latest
+
+  # ─── Deploy to AKS ─────────────────────────────────────────────────
+  deploy:
+    name: Deploy to AKS
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Login to Azure
+      uses: azure/login@v2
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Get AKS credentials
+      run: |
+        az aks get-credentials \
+          --resource-group ${{ env.AKS_RESOURCE_GROUP }} \
+          --name ${{ env.AKS_CLUSTER_NAME }} \
+          --overwrite-existing
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/configmap.yaml
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl rollout status deployment/adds-azure-mcp-agent-deployment --timeout=120s
+
+    - name: Verify deployment
+      run: |
+        kubectl get pods -l app=adds-azure-mcp-agent
+        kubectl get svc adds-azure-mcp-agent-service

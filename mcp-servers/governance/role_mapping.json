@@ -1,0 +1,5 @@
+{
+  "CloudAdmin": ["admin@company.com", "aditi@company.com"],
+  "OpsManager": ["ops@company.com"],
+  "SecurityAdmin": ["security@company.com"]
+}

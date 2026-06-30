@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mcp-agent-config
+  labels:
+    app: adds-azure-mcp-agent
+data:
+  # MCP Server URLs — using localhost because all containers
+  # run as sidecars in the same pod (shared network namespace)
+  COST_MCP_URL: "http://localhost:3000"
+  POLICY_MCP_URL: "http://localhost:3001"
+  GOVERNANCE_MCP_URL: "http://localhost:3002"
+  SECURITY_MCP_URL: "http://localhost:3003"
+  AZURE_TOOLS_MCP_URL: "http://localhost:3004"
+
+  # Application settings
+  PORT: "8080"

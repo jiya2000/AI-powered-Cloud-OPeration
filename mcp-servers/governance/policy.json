@@ -1,0 +1,14 @@
+{
+  "delete_resource": {
+    "roles": ["CloudAdmin"],
+    "expiry_hours": 12
+  },
+  "scale_resource": {
+    "roles": ["CloudAdmin", "OpsManager"],
+    "expiry_hours": 24
+  },
+  "modify_rbac": {
+    "roles": ["SecurityAdmin"],
+    "expiry_hours": 24
+  }
+}

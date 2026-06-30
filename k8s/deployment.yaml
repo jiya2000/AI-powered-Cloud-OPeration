@@ -1,0 +1,192 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adds-azure-mcp-agent-deployment
+  labels:
+    app: adds-azure-mcp-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adds-azure-mcp-agent
+  template:
+    metadata:
+      labels:
+        app: adds-azure-mcp-agent
+    spec:
+      containers:
+      # ─── Main Agent Container (LangGraph + Bot Framework) ───────────
+      - name: python-agent
+        image: addsmcpagentacr2026.azurecr.io/python-agent:latest
+        ports:
+        - containerPort: 8080
+          name: bot-http
+        envFrom:
+        - configMapRef:
+            name: mcp-agent-config
+        env:
+        - name: COSMOS_ENDPOINT
+          valueFrom:
+            secretKeyRef:
+              name: mcp-secrets
+              key: COSMOS_ENDPOINT
+        - name: COSMOS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: mcp-secrets
+              key: COSMOS_KEY
+        - name: MicrosoftAppId
+          valueFrom:
+            secretKeyRef:
+              name: mcp-secrets
+              key: MicrosoftAppId
+        - name: MicrosoftAppPassword
+          valueFrom:
+            secretKeyRef:
+              name: mcp-secrets
+              key: MicrosoftAppPassword
+        - name: APPLICATIONINSIGHTS_CONNECTION_STRING
+          valueFrom:
+            secretKeyRef:
+              name: mcp-secrets
+              key: APPLICATIONINSIGHTS_CONNECTION_STRING
+              optional: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+      # ─── MCP Sidecar: Cost Management (Port 3000) ──────────────────
+      - name: mcp-server-cost-mgmt
+        image: addsmcpagentacr2026.azurecr.io/mcp-server:latest
+        command: ["npm", "run", "start:cost-mgmt"]
+        ports:
+        - containerPort: 3000
+          name: cost-mcp
+        env:
+        - name: PORT
+          value: "3000"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+
+      # ─── MCP Sidecar: Policy & Compliance (Port 3001) ──────────────
+      - name: mcp-server-policy
+        image: addsmcpagentacr2026.azurecr.io/mcp-server:latest
+        command: ["npm", "run", "start:policy"]
+        ports:
+        - containerPort: 3001
+          name: policy-mcp
+        env:
+        - name: PORT
+          value: "3001"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 15
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+
+      # ─── MCP Sidecar: Governance (Port 3002) ───────────────────────
+      - name: mcp-server-governance
+        image: addsmcpagentacr2026.azurecr.io/mcp-server:latest
+        command: ["npm", "run", "start:governance"]
+        ports:
+        - containerPort: 3002
+          name: governance-mcp
+        env:
+        - name: PORT
+          value: "3002"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3002
+          initialDelaySeconds: 15
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+
+      # ─── MCP Sidecar: Security (Port 3003) ─────────────────────────
+      - name: mcp-server-security
+        image: addsmcpagentacr2026.azurecr.io/mcp-server:latest
+        command: ["npm", "run", "start:security"]
+        ports:
+        - containerPort: 3003
+          name: security-mcp
+        env:
+        - name: PORT
+          value: "3003"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3003
+          initialDelaySeconds: 15
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+
+      # ─── MCP Sidecar: Azure Tools (Port 3004) ──────────────────────
+      - name: mcp-server-azure-tools
+        image: addsmcpagentacr2026.azurecr.io/mcp-server:latest
+        command: ["npm", "run", "start:azure-tools"]
+        ports:
+        - containerPort: 3004
+          name: tools-mcp
+        env:
+        - name: PORT
+          value: "3004"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3004
+          initialDelaySeconds: 15
+          periodSeconds: 30
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"

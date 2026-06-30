@@ -1,0 +1,34 @@
+{
+  "name": "azure-mcp-servers",
+  "version": "1.0.0",
+  "description": "MCP Servers for Azure Operations Agent — Cost Management, Policy, Security, Governance, and Azure Tools",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "start:cost-mgmt": "node build/cost-mgmt/server.js",
+    "start:azure-tools": "node build/azure-tools/server.js",
+    "start:policy": "node build/policy/server.js",
+    "start:security": "node build/security/server.js",
+    "start:governance": "node build/governance/server.js",
+    "dev:cost-mgmt": "npx ts-node cost-mgmt/server.ts",
+    "dev:azure-tools": "npx ts-node azure-tools/server.ts",
+    "dev:policy": "npx ts-node policy/server.ts",
+    "dev:security": "npx ts-node security/server.ts",
+    "dev:governance": "npx ts-node governance/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "@azure/arm-consumption": "^9.0.0",
+    "@azure/arm-resourcegraph": "^8.0.0",
+    "@azure/arm-resources": "^5.0.0",
+    "@azure/arm-authorization": "^9.0.0",
+    "@azure/identity": "^4.0.0",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^5.0.0"
+  }
+}

@@ -1,0 +1,29 @@
+# Core Framework
+langgraph>=0.0.40
+langchain-core>=0.1.0
+
+# Azure SDKs
+azure-cosmos>=4.5.0
+azure-monitor-opentelemetry>=1.0.0
+opentelemetry-api>=1.20.0
+
+# Bot Framework (Microsoft Teams integration)
+botbuilder-core>=4.14.0
+botbuilder-integration-aiohttp>=4.14.0
+
+# HTTP
+aiohttp>=3.9.0
+requests>=2.31.0
+
+# LLM Providers (install the one you need)
+# Option 1: Groq (FREE — recommended for testing)
+langchain-groq>=0.1.0
+
+# Option 2: Google Gemini (FREE)
+# langchain-google-genai>=1.0.0
+
+# Option 3: Azure OpenAI (enterprise)
+# langchain-openai>=0.1.0
+
+# Utilities
+python-dotenv>=1.0.0
