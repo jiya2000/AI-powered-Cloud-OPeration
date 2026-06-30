@@ -8,7 +8,7 @@ real cost data, forecasts, and budget information.
 
 import os
 from typing import Dict, Any
-from telemetry import LLMOpsTelemetry, AuditTrail
+from telemetry import LLMOpsTelemetry, AuditTrail, logger
 from mcp_client import MCPClients
 
 
@@ -37,7 +37,7 @@ class FinOpsAgent:
         Returns:
             Dict with 'status', 'message', and 'requires_approval' keys
         """
-        print(f"[{self.name}] Analyzing cost request: {user_input}")
+        logger.info(f"Analyzing cost request: {user_input}", extra={"agent": self.name})
 
         # Determine the right tool and parameters based on user input
         tool_name = "get_azure_costs"
@@ -62,7 +62,7 @@ class FinOpsAgent:
         )
 
         # Call the Cost Management MCP Server
-        print(f"[{self.name}] Calling MCP tool: {tool_name}(scope={scope}, timeframe={timeframe})")
+        logger.info(f"Calling MCP tool: {tool_name}", extra={"agent": self.name, "scope": scope, "timeframe": timeframe})
         result = self.mcp.call_tool(tool_name, {
             "scope": scope,
             "timeframe": timeframe,
@@ -78,7 +78,7 @@ class FinOpsAgent:
         # Handle MCP errors
         if result.get("error"):
             error_msg = result.get("message", "Unknown error")
-            print(f"[{self.name}] MCP call failed: {error_msg}")
+            logger.error(f"MCP call failed: {error_msg}", extra={"agent": self.name})
             return {
                 "status": "error",
                 "message": f"Failed to retrieve cost data: {error_msg}",

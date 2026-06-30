@@ -11,7 +11,7 @@ Connects to two MCP servers:
 
 import os
 from typing import Dict, Any
-from telemetry import LLMOpsTelemetry, AuditTrail
+from telemetry import LLMOpsTelemetry, AuditTrail, logger
 from mcp_client import MCPClients
 
 
@@ -43,7 +43,7 @@ class SecurityAgent:
         Returns:
             Dict with 'status', 'message', and 'requires_approval' keys
         """
-        print(f"[{self.name}] Analyzing security request: {user_input}")
+        logger.info(f"Analyzing security request: {user_input}", extra={"agent": self.name})
 
         # Log telemetry
         LLMOpsTelemetry.log_generation(
@@ -96,7 +96,7 @@ class SecurityAgent:
         """Calls the Policy MCP to check compliance status."""
         scope = os.environ.get("AZURE_SUBSCRIPTION_ID", "subscription/default")
 
-        print(f"[{self.name}] Checking compliance via Policy MCP")
+        logger.info(f"Checking compliance via Policy MCP", extra={"agent": self.name})
         result = self.policy_mcp.call_tool("check_compliance", {
             "scope": scope,
         })
@@ -129,7 +129,7 @@ class SecurityAgent:
         elif "low" in input_lower:
             severity = "Low"
 
-        print(f"[{self.name}] Checking Defender alerts via Security MCP")
+        logger.info(f"Checking Defender alerts via Security MCP", extra={"agent": self.name})
         args: Dict[str, Any] = {"subscription_id": subscription_id}
         if severity:
             args["severity"] = severity
@@ -154,7 +154,7 @@ class SecurityAgent:
         """Calls the Security MCP to audit RBAC role assignments."""
         scope = os.environ.get("AZURE_SUBSCRIPTION_ID", "subscription/default")
 
-        print(f"[{self.name}] Auditing RBAC via Security MCP")
+        logger.info(f"Auditing RBAC via Security MCP", extra={"agent": self.name})
         result = self.security_mcp.call_tool("read_rbac_assignments", {
             "scope": scope,
         })

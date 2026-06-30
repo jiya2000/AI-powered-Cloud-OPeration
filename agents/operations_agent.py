@@ -11,7 +11,7 @@ approval workflow before execution.
 
 import os
 from typing import Dict, Any
-from telemetry import LLMOpsTelemetry, AuditTrail
+from telemetry import LLMOpsTelemetry, AuditTrail, logger
 from mcp_client import MCPClients
 
 
@@ -42,7 +42,7 @@ class OperationsAgent:
         Returns:
             Dict with 'status', 'message', and 'requires_approval' keys
         """
-        print(f"[{self.name}] Analyzing operations request: {user_input}")
+        logger.info(f"Analyzing operations request: {user_input}", extra={"agent": self.name})
 
         # Log telemetry for the LLM analyzing the request
         LLMOpsTelemetry.log_generation(
@@ -91,7 +91,7 @@ class OperationsAgent:
         # Extract a resource identifier (simplified; real impl would use NER)
         vm_id = "/subscriptions/default/resourceGroups/prod-rg/providers/Microsoft.Compute/virtualMachines/target-vm"
 
-        print(f"[{self.name}] Requesting VM deletion via Azure Tools MCP")
+        logger.info(f"Requesting VM deletion via Azure Tools MCP", extra={"agent": self.name, "vm_id": vm_id})
         result = self.mcp.call_tool("delete_vm", {"vm_id": vm_id})
 
         if result.get("error") or (result.get("isError")):
@@ -112,7 +112,7 @@ class OperationsAgent:
 
     def _handle_scale(self, user_input: str) -> Dict[str, Any]:
         """Handles resource scaling requests."""
-        print(f"[{self.name}] Querying current resources via Azure Tools MCP")
+        logger.info(f"Querying current resources via Azure Tools MCP", extra={"agent": self.name})
         result = self.mcp.call_tool("resource_graph_query", {
             "query": "Resources | where type =~ 'Microsoft.Compute/virtualMachines' | project name, properties.hardwareProfile.vmSize, location",
         })
@@ -148,7 +148,7 @@ class OperationsAgent:
         elif "storage" in user_input.lower():
             query = "Resources | where type =~ 'Microsoft.Storage/storageAccounts' | project name, location, kind, sku.name"
 
-        print(f"[{self.name}] Running Resource Graph query via Azure Tools MCP")
+        logger.info(f"Running Resource Graph query via Azure Tools MCP", extra={"agent": self.name})
         result = self.mcp.call_tool("resource_graph_query", {"query": query})
 
         if result.get("error"):

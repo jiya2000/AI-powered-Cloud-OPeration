@@ -13,6 +13,7 @@ Endpoints:
 import sys
 import os
 import traceback
+import logging
 from aiohttp import web
 from botbuilder.core import (
     BotFrameworkAdapterSettings,
@@ -23,6 +24,10 @@ from botbuilder.schema import Activity, ActivityTypes
 
 # Import the compiled LangGraph
 from router import graph
+
+# Setup logger
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 # ─── Bot Adapter Setup ────────────────────────────────────────────────
@@ -35,7 +40,7 @@ ADAPTER = BotFrameworkAdapter(SETTINGS)
 
 async def on_error(context: TurnContext, error: Exception):
     """Global error handler for the Bot Framework adapter."""
-    print(f"\n[on_turn_error] unhandled error: {error}", file=sys.stderr)
+    logger.error(f"[on_turn_error] unhandled error: {error}")
     traceback.print_exc()
     await context.send_activity(
         "⚠️ The bot encountered an error. Please try again or contact support."
@@ -94,7 +99,7 @@ async def messages(req: web.Request) -> web.Response:
             )
             await turn_context.send_activity(ai_response)
         except Exception as e:
-            print(f"[LangGraph Error] {e}", file=sys.stderr)
+            logger.error(f"[LangGraph Error] {e}")
             traceback.print_exc()
             await turn_context.send_activity(
                 "Sorry, I encountered an error processing your request. Please try again."
@@ -122,7 +127,7 @@ app.router.add_get("/health", health)
 if __name__ == "__main__":
     try:
         port = int(os.environ.get("PORT", "8080"))
-        print(f"Starting Azure MCP Bot Server on port {port}...")
+        logger.info(f"Starting Azure MCP Bot Server on port {port}...")
         web.run_app(app, host="0.0.0.0", port=port)
     except Exception as error:
         raise error

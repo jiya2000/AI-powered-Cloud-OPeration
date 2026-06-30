@@ -12,7 +12,7 @@ Architecture:
 import time
 from typing import Dict, TypedDict, Any
 from langgraph.graph import StateGraph, END
-from telemetry import LLMOpsTelemetry
+from telemetry import LLMOpsTelemetry, logger
 from approval_workflow import ApprovalWorkflow
 from finops_agent import FinOpsAgent
 from security_agent import SecurityAgent
@@ -69,7 +69,7 @@ def analyze_intent(state: AgentState) -> Dict[str, Any]:
         cost=0.0001 if using_llm else 0.0,
     )
 
-    print(f"[RouterAgent] Intent: {intent} ({'LLM' if using_llm else 'keywords'}) in {elapsed_ms:.0f}ms")
+    logger.info(f"Intent classified", extra={"intent": intent, "source": "LLM" if using_llm else "keywords", "elapsed_ms": round(elapsed_ms, 1)})
 
     # Persist intent to session memory
     session_id = state.get("session_id", "default")

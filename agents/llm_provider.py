@@ -18,6 +18,7 @@ Usage:
 
 import os
 from typing import Optional
+from telemetry import logger
 
 
 def get_llm() -> Optional[object]:
@@ -47,12 +48,12 @@ def get_llm() -> Optional[object]:
                 temperature=0,
                 max_tokens=100,
             )
-            print("[LLM] Using Azure OpenAI")
+            logger.info("Using Azure OpenAI")
             return llm
         except ImportError:
-            print("[LLM] langchain-openai not installed. Trying next provider...")
+            logger.warn("langchain-openai not installed. Trying next provider...")
         except Exception as e:
-            print(f"[LLM] Azure OpenAI init failed: {e}. Trying next provider...")
+            logger.warn(f"Azure OpenAI init failed: {e}. Trying next provider...")
 
     # Option 2: Groq (free tier — Llama 3.3 70B, very fast)
     if os.environ.get("GROQ_API_KEY"):
@@ -65,12 +66,12 @@ def get_llm() -> Optional[object]:
                 temperature=0,
                 max_tokens=100,
             )
-            print("[LLM] Using Groq (free tier — Llama 3.3 70B)")
+            logger.info("Using Groq (free tier — Llama 3.3 70B)")
             return llm
         except ImportError:
-            print("[LLM] langchain-groq not installed. Trying next provider...")
+            logger.warn("langchain-groq not installed. Trying next provider...")
         except Exception as e:
-            print(f"[LLM] Groq init failed: {e}. Trying next provider...")
+            logger.warn(f"Groq init failed: {e}. Trying next provider...")
 
     # Option 3: Google Gemini (free tier — 15 RPM)
     if os.environ.get("GOOGLE_API_KEY"):
@@ -83,16 +84,15 @@ def get_llm() -> Optional[object]:
                 temperature=0,
                 max_output_tokens=100,
             )
-            print("[LLM] Using Google Gemini (free tier)")
+            logger.info("Using Google Gemini (free tier)")
             return llm
         except ImportError:
-            print("[LLM] langchain-google-genai not installed. Trying next provider...")
+            logger.warn("langchain-google-genai not installed. Trying next provider...")
         except Exception as e:
-            print(f"[LLM] Google Gemini init failed: {e}. Trying next provider...")
+            logger.warn(f"Google Gemini init failed: {e}. Trying next provider...")
 
     # Fallback: No LLM available
-    print("[LLM] No LLM provider configured. Using keyword-based intent classification.")
-    print("[LLM] Set GROQ_API_KEY (free) or GOOGLE_API_KEY (free) to enable LLM routing.")
+    logger.info("No LLM provider configured. Using keyword-based intent classification. Set GROQ_API_KEY (free) or GOOGLE_API_KEY (free) to enable LLM routing.")
     return None
 
 
@@ -152,7 +152,7 @@ Respond with ONLY the category name (one word). Nothing else."""
         return "unknown"
 
     except Exception as e:
-        print(f"[LLM] Classification failed: {e}. Falling back to keywords.")
+        logger.error(f"Classification failed: {e}. Falling back to keywords.")
         return _keyword_classify(user_input)
 
 

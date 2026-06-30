@@ -13,7 +13,7 @@ import os
 import json
 import uuid
 from datetime import datetime
-from telemetry import LLMOpsTelemetry, AuditTrail
+from telemetry import LLMOpsTelemetry, AuditTrail, logger
 from mcp_client import MCPClients
 
 
@@ -40,10 +40,7 @@ class ApprovalWorkflow:
         """
         request_id = f"req-{uuid.uuid4().hex[:8]}"
 
-        print(f"[ApprovalWorkflow] Requesting approval from Governance MCP")
-        print(f"[ApprovalWorkflow] Request ID: {request_id}")
-        print(f"[ApprovalWorkflow] Action: {action_details}")
-        print(f"[ApprovalWorkflow] Requested by: {requested_by}")
+        logger.info(f"Requesting approval from Governance MCP", extra={"request_id": request_id, "action": action_details, "requested_by": requested_by})
 
         # Call the Governance MCP server
         result = self.mcp.call_tool("request_approval", {
@@ -53,8 +50,8 @@ class ApprovalWorkflow:
         })
 
         if result.get("error"):
-            print(f"[ApprovalWorkflow] MCP call failed: {result.get('message')}")
-            print("[ApprovalWorkflow] Falling back to local policy evaluation")
+            logger.error(f"MCP call failed: {result.get('message')}", extra={"request_id": request_id})
+            logger.warn("Falling back to local policy evaluation", extra={"request_id": request_id})
             status = self._evaluate_locally(action_details)
         else:
             # Parse the MCP response
@@ -85,8 +82,7 @@ class ApprovalWorkflow:
             approved_by="GovernanceMCP",
         )
 
-        print(f"\n[AUDIT TRAIL] Governance record:")
-        print(json.dumps(audit_payload, indent=2))
+        logger.info("Governance record emitted", extra={"payload": audit_payload})
 
         return status
 
@@ -104,7 +100,7 @@ class ApprovalWorkflow:
             with open(policy_path, "r") as f:
                 policies = json.load(f)
         except (FileNotFoundError, json.JSONDecodeError):
-            print("[ApprovalWorkflow] No local policy file found. Defaulting to APPROVED.")
+            logger.warn("No local policy file found. Defaulting to APPROVED.")
             return "APPROVED"
 
         action_lower = action_details.lower()
@@ -113,17 +109,17 @@ class ApprovalWorkflow:
         if "delete" in action_lower or "remove" in action_lower:
             policy = policies.get("delete_resource", {})
             required_roles = policy.get("roles", ["CloudAdmin"])
-            print(f"[ApprovalWorkflow] Local policy: delete requires roles {required_roles}")
+            logger.info(f"Local policy: delete requires roles {required_roles}")
 
         elif "scale" in action_lower or "resize" in action_lower:
             policy = policies.get("scale_resource", {})
             required_roles = policy.get("roles", ["CloudAdmin", "OpsManager"])
-            print(f"[ApprovalWorkflow] Local policy: scale requires roles {required_roles}")
+            logger.info(f"Local policy: scale requires roles {required_roles}")
 
         elif "rbac" in action_lower or "role" in action_lower:
             policy = policies.get("modify_rbac", {})
             required_roles = policy.get("roles", ["SecurityAdmin"])
-            print(f"[ApprovalWorkflow] Local policy: RBAC modification requires roles {required_roles}")
+            logger.info(f"Local policy: RBAC modification requires roles {required_roles}")
 
         # Simulate approval decision based on action keywords
         # In production: would send Teams Adaptive Card and wait for response

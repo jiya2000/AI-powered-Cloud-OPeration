@@ -11,13 +11,32 @@
  * for real Azure Security data. Falls back to realistic mock data.
  */
 
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { DefaultAzureCredential } from "@azure/identity";
 
 const app = express();
 app.use(express.json());
 
 const PORT = parseInt(process.env.PORT || "3003");
+
+// ─── Structured Logging ──────────────────────────────────────────────
+const logger = {
+  info: (msg: string, meta: any = {}) => console.log(JSON.stringify({ timestamp: new Date().toISOString(), level: "INFO", service: "security", message: msg, ...meta })),
+  warn: (msg: string, meta: any = {}) => console.warn(JSON.stringify({ timestamp: new Date().toISOString(), level: "WARN", service: "security", message: msg, ...meta })),
+  error: (msg: string, meta: any = {}) => console.error(JSON.stringify({ timestamp: new Date().toISOString(), level: "ERROR", service: "security", message: msg, ...meta }))
+};
+
+// ─── Auth Middleware ─────────────────────────────────────────────────
+const EXPECTED_TOKEN = process.env.MCP_AUTH_TOKEN || "";
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!EXPECTED_TOKEN) return next();
+  const token = req.header("x-mcp-token");
+  if (!token || token !== EXPECTED_TOKEN) {
+    logger.warn("Unauthorized request attempt", { path: req.path, ip: req.ip });
+    return res.status(401).json({ error: true, message: "Unauthorized: Invalid or missing x-mcp-token" });
+  }
+  next();
+}
 
 // Azure credential initialization
 let credential: any = null;
@@ -254,11 +273,11 @@ app.get("/health", (_req, res) => {
   res.json({ status: "healthy", service: "security-mcp", port: PORT, azure: useAzure });
 });
 
-app.get("/api/tools", (_req, res) => {
+app.get("/api/tools", requireAuth, (_req, res) => {
   res.json({ tools });
 });
 
-app.post("/api/tools/call", async (req, res) => {
+app.post("/api/tools/call", requireAuth, async (req, res) => {
   try {
     const { name, arguments: args } = req.body;
     if (!name) {
@@ -267,13 +286,13 @@ app.post("/api/tools/call", async (req, res) => {
     const result = await handleToolCall(name, args || {});
     res.json(result);
   } catch (error: any) {
-    console.error(`[SecurityMCP] Error: ${error.message}`);
+    logger.error(`Error executing tool`, { error: error.message });
     res.status(400).json({ error: true, message: error.message });
   }
 });
 
 // ─── Start Server ────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`[SecurityMCP] Security MCP Server running on port ${PORT}`);
+  logger.info(`Security MCP Server running`, { port: PORT });
   console.log(`[SecurityMCP] Azure credentials: ${useAzure ? "available" : "mock mode"}`);
 });

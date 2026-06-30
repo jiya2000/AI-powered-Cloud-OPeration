@@ -12,13 +12,32 @@
  * credentials are unavailable.
  */
 
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import { DefaultAzureCredential } from "@azure/identity";
 
 const app = express();
 app.use(express.json());
 
 const PORT = parseInt(process.env.PORT || "3000");
+
+// ─── Structured Logging ──────────────────────────────────────────────
+const logger = {
+  info: (msg: string, meta: any = {}) => console.log(JSON.stringify({ timestamp: new Date().toISOString(), level: "INFO", service: "cost-mgmt", message: msg, ...meta })),
+  warn: (msg: string, meta: any = {}) => console.warn(JSON.stringify({ timestamp: new Date().toISOString(), level: "WARN", service: "cost-mgmt", message: msg, ...meta })),
+  error: (msg: string, meta: any = {}) => console.error(JSON.stringify({ timestamp: new Date().toISOString(), level: "ERROR", service: "cost-mgmt", message: msg, ...meta }))
+};
+
+// ─── Auth Middleware ─────────────────────────────────────────────────
+const EXPECTED_TOKEN = process.env.MCP_AUTH_TOKEN || "";
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!EXPECTED_TOKEN) return next(); // Skip auth if not configured
+  const token = req.header("x-mcp-token");
+  if (!token || token !== EXPECTED_TOKEN) {
+    logger.warn("Unauthorized request attempt", { path: req.path, ip: req.ip });
+    return res.status(401).json({ error: true, message: "Unauthorized: Invalid or missing x-mcp-token" });
+  }
+  next();
+}
 
 // Azure credential initialization
 let credential: any = null;
@@ -27,7 +46,7 @@ try {
   credential = new DefaultAzureCredential();
   useAzure = true;
 } catch (e) {
-  console.warn("[CostMCP] Azure credentials not available. Using mock data.");
+  logger.warn("Azure credentials not available. Using mock data.");
 }
 
 // ─── Tool Definitions ────────────────────────────────────────────────
@@ -78,17 +97,13 @@ async function handleToolCall(name: string, args: any): Promise<any> {
   switch (name) {
     case "get_azure_costs": {
       const { scope, timeframe } = args;
-      console.log(`[CostMCP] Fetching costs for scope: ${scope}, timeframe: ${timeframe}`);
+      logger.info(`Fetching costs`, { scope, timeframe });
 
       if (useAzure) {
         try {
-          // Production: Use Azure Cost Management SDK
-          // import { ConsumptionManagementClient } from "@azure/arm-consumption";
-          // const client = new ConsumptionManagementClient(credential, subscriptionId);
-          // const usageDetails = await client.usageDetails.list(scope);
-          console.log("[CostMCP] Would call Azure Cost Management API here");
+          logger.info("Would call Azure Cost Management API here");
         } catch (e: any) {
-          console.warn(`[CostMCP] Azure API call failed: ${e.message}. Using mock data.`);
+          logger.warn(`Azure API call failed. Using mock data.`, { error: e.message });
         }
       }
 
@@ -126,7 +141,7 @@ async function handleToolCall(name: string, args: any): Promise<any> {
 
     case "get_cost_forecast": {
       const { scope } = args;
-      console.log(`[CostMCP] Generating forecast for scope: ${scope}`);
+      logger.info(`Generating forecast`, { scope });
 
       const forecast = {
         scope,
@@ -175,11 +190,11 @@ app.get("/health", (_req, res) => {
   res.json({ status: "healthy", service: "cost-mgmt-mcp", port: PORT, azure: useAzure });
 });
 
-app.get("/api/tools", (_req, res) => {
+app.get("/api/tools", requireAuth, (_req, res) => {
   res.json({ tools });
 });
 
-app.post("/api/tools/call", async (req, res) => {
+app.post("/api/tools/call", requireAuth, async (req, res) => {
   try {
     const { name, arguments: args } = req.body;
     if (!name) {
@@ -188,13 +203,12 @@ app.post("/api/tools/call", async (req, res) => {
     const result = await handleToolCall(name, args || {});
     res.json(result);
   } catch (error: any) {
-    console.error(`[CostMCP] Error: ${error.message}`);
+    logger.error(`Error executing tool`, { error: error.message });
     res.status(400).json({ error: true, message: error.message });
   }
 });
 
 // ─── Start Server ────────────────────────────────────────────────────
 app.listen(PORT, () => {
-  console.log(`[CostMCP] Cost Management MCP Server running on port ${PORT}`);
-  console.log(`[CostMCP] Azure credentials: ${useAzure ? "available" : "mock mode"}`);
+  logger.info(`Cost Management MCP Server running`, { port: PORT, azure: useAzure });
 });
