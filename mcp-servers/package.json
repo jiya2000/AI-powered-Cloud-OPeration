@@ -18,10 +18,10 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^0.6.0",
-    "@azure/arm-consumption": "^9.0.0",
-    "@azure/arm-resourcegraph": "^8.0.0",
-    "@azure/arm-resources": "^5.0.0",
-    "@azure/arm-authorization": "^9.0.0",
+    "@azure/arm-consumption": "latest",
+    "@azure/arm-resourcegraph": "latest",
+    "@azure/arm-resources": "latest",
+    "@azure/arm-authorization": "latest",
     "@azure/identity": "^4.0.0",
     "express": "^4.18.0"
   },
